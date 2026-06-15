@@ -55,7 +55,7 @@ This machine has Java 21 available, but `gradle` is not currently on `PATH` and 
 - Create: `watch/app/src/main/AndroidManifest.xml`
 - Create: `watch/app/src/main/java/com/example/watchtransfer/MainActivity.kt`
 
-- [ ] **Step 1: Create Gradle settings**
+- [x] **Step 1: Create Gradle settings**
 
 Create `watch/settings.gradle.kts`:
 
@@ -80,7 +80,7 @@ rootProject.name = "WatchTransferReceiver"
 include(":app")
 ```
 
-- [ ] **Step 2: Create root build file**
+- [x] **Step 2: Create root build file**
 
 Create `watch/build.gradle.kts`:
 
@@ -92,7 +92,7 @@ plugins {
 }
 ```
 
-- [ ] **Step 3: Create app module build file**
+- [x] **Step 3: Create app module build file**
 
 Create `watch/app/build.gradle.kts`:
 
@@ -151,7 +151,7 @@ dependencies {
 }
 ```
 
-- [ ] **Step 4: Create manifest**
+- [x] **Step 4: Create manifest**
 
 Create `watch/app/src/main/AndroidManifest.xml`:
 
@@ -186,7 +186,7 @@ Create `watch/app/src/main/AndroidManifest.xml`:
 </manifest>
 ```
 
-- [ ] **Step 5: Create minimal theme**
+- [x] **Step 5: Create minimal theme**
 
 Create `watch/app/src/main/res/values/styles.xml`:
 
@@ -203,7 +203,7 @@ Create `watch/app/src/main/res/values/styles.xml`:
 </resources>
 ```
 
-- [ ] **Step 6: Create watch project gitignore**
+- [x] **Step 6: Create watch project gitignore**
 
 Create `watch/.gitignore`:
 
@@ -215,7 +215,7 @@ local.properties
 app/build/
 ```
 
-- [ ] **Step 7: Create placeholder activity**
+- [x] **Step 7: Create placeholder activity**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/MainActivity.kt`:
 
@@ -261,7 +261,7 @@ private fun PlaceholderApp() {
 }
 ```
 
-- [ ] **Step 8: Generate Gradle wrapper**
+- [x] **Step 8: Generate Gradle wrapper**
 
 Run from `watch/`:
 
@@ -281,7 +281,7 @@ watch/gradle/wrapper/gradle-wrapper.properties
 watch/gradle/wrapper/gradle-wrapper.jar
 ```
 
-- [ ] **Step 9: Verify scaffold builds**
+- [x] **Step 9: Verify scaffold builds**
 
 Run from `watch/`:
 
@@ -291,7 +291,7 @@ Run from `watch/`:
 
 Expected: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 10: Commit scaffold**
+- [x] **Step 10: Commit scaffold**
 
 ```powershell
 git add watch/.gitignore watch/settings.gradle.kts watch/build.gradle.kts watch/app watch/gradlew watch/gradlew.bat watch/gradle/wrapper
@@ -309,7 +309,7 @@ git commit -m "chore: scaffold watch receiver app"
 - Create: `watch/app/src/main/java/com/example/watchtransfer/protocol/TransferHeader.kt`
 - Create: `watch/app/src/main/java/com/example/watchtransfer/protocol/TransferProtocol.kt`
 
-- [ ] **Step 1: Write failing file-name sanitizer tests**
+- [x] **Step 1: Write failing file-name sanitizer tests**
 
 Create `watch/app/src/test/java/com/example/watchtransfer/protocol/FileNameSanitizerTest.kt`:
 
@@ -346,7 +346,7 @@ class FileNameSanitizerTest {
 }
 ```
 
-- [ ] **Step 2: Run sanitizer tests to verify they fail**
+- [x] **Step 2: Run sanitizer tests to verify they fail**
 
 Run from `watch/`:
 
@@ -356,7 +356,7 @@ Run from `watch/`:
 
 Expected: FAIL because `FileNameSanitizer` does not exist.
 
-- [ ] **Step 3: Implement file-name sanitizer**
+- [x] **Step 3: Implement file-name sanitizer**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/protocol/FileNameSanitizer.kt`:
 
@@ -395,7 +395,7 @@ object FileNameSanitizer {
 }
 ```
 
-- [ ] **Step 4: Run sanitizer tests to verify they pass**
+- [x] **Step 4: Run sanitizer tests to verify they pass**
 
 Run from `watch/`:
 
@@ -405,7 +405,7 @@ Run from `watch/`:
 
 Expected: PASS.
 
-- [ ] **Step 5: Write failing protocol parser tests**
+- [x] **Step 5: Write failing protocol parser tests**
 
 Create `watch/app/src/test/java/com/example/watchtransfer/protocol/TransferProtocolTest.kt`:
 
@@ -482,7 +482,7 @@ class TransferProtocolTest {
 }
 ```
 
-- [ ] **Step 6: Run protocol tests to verify they fail**
+- [x] **Step 6: Run protocol tests to verify they fail**
 
 Run from `watch/`:
 
@@ -492,7 +492,7 @@ Run from `watch/`:
 
 Expected: FAIL because protocol classes do not exist.
 
-- [ ] **Step 7: Implement protocol model and parser**
+- [x] **Step 7: Implement protocol model and parser**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/protocol/TransferHeader.kt`:
 
@@ -582,7 +582,7 @@ class TransferProtocol {
 class TransferProtocolException(message: String, cause: Throwable? = null) : Exception(message, cause)
 ```
 
-- [ ] **Step 8: Run all protocol tests**
+- [x] **Step 8: Run all protocol tests**
 
 Run from `watch/`:
 
@@ -592,7 +592,7 @@ Run from `watch/`:
 
 Expected: PASS.
 
-- [ ] **Step 9: Commit protocol**
+- [x] **Step 9: Commit protocol**
 
 ```powershell
 git add watch/app/src/main/java/com/example/watchtransfer/protocol watch/app/src/test/java/com/example/watchtransfer/protocol
