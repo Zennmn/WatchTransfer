@@ -1,39 +1,111 @@
 package com.example.watchtransfer
 
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.watchtransfer.bluetooth.AndroidRfcommSocketFactory
+import com.example.watchtransfer.bluetooth.BluetoothReceiveServer
+import com.example.watchtransfer.bluetooth.DefaultSessionReceiver
+import com.example.watchtransfer.storage.DownloadFileStore
+import com.example.watchtransfer.ui.ReceiverStatus
+import com.example.watchtransfer.ui.ReceiverUiState
+import com.example.watchtransfer.ui.ReceiverViewModel
+import com.example.watchtransfer.ui.WatchReceiverScreen
 
 class MainActivity : ComponentActivity() {
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        recreate()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val permissions = requiredBluetoothPermissions()
+        if (!hasPermissions(permissions)) {
+            permissionLauncher.launch(permissions)
+        }
+
         setContent {
-            PlaceholderApp()
+            val bluetoothAdapter = bluetoothAdapter()
+            if (!hasPermissions(permissions)) {
+                WatchReceiverScreen(
+                    state = ReceiverUiState(
+                        status = ReceiverStatus.NeedsPermission,
+                        message = "请授权蓝牙权限"
+                    ),
+                    onRetry = { permissionLauncher.launch(permissions) }
+                )
+            } else if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+                WatchReceiverScreen(
+                    state = ReceiverUiState(
+                        status = ReceiverStatus.BluetoothOff,
+                        message = "请先打开手表蓝牙"
+                    ),
+                    onRetry = {}
+                )
+            } else {
+                val factory = remember {
+                    val server = BluetoothReceiveServer(
+                        socketFactory = AndroidRfcommSocketFactory(bluetoothAdapter),
+                        sessionReceiver = DefaultSessionReceiver(),
+                        store = DownloadFileStore(contentResolver)
+                    )
+                    object : ViewModelProvider.Factory {
+                        @Suppress("UNCHECKED_CAST")
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            return ReceiverViewModel(receiveOnce = { server.receiveOnce() }) as T
+                        }
+                    }
+                }
+                val viewModel: ReceiverViewModel = viewModel(factory = factory)
+                val state by viewModel.uiState.collectAsState()
+                LaunchedEffect(Unit) {
+                    viewModel.startReceiving()
+                }
+                WatchReceiverScreen(
+                    state = state,
+                    onRetry = { viewModel.startReceiving() }
+                )
+            }
         }
     }
-}
 
-@Composable
-private fun PlaceholderApp() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "等待接收",
-            color = Color.White,
-            style = MaterialTheme.typography.titleLarge
-        )
+    private fun bluetoothAdapter(): BluetoothAdapter? {
+        val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        return manager.adapter
+    }
+
+    private fun requiredBluetoothPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            arrayOf(
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_SCAN
+            )
+        } else {
+            emptyArray()
+        }
+    }
+
+    private fun hasPermissions(permissions: Array<String>): Boolean {
+        return permissions.all { permission ->
+            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+        }
     }
 }
