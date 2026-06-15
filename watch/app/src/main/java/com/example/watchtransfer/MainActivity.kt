@@ -28,6 +28,8 @@ import com.example.watchtransfer.ui.ReceiverViewModel
 import com.example.watchtransfer.ui.WatchReceiverScreen
 
 class MainActivity : ComponentActivity() {
+    private var lastBluetoothEnabled: Boolean? = null
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -36,6 +38,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        lastBluetoothEnabled = bluetoothAdapter()?.isEnabled == true
 
         val permissions = requiredBluetoothPermissions()
         if (!hasPermissions(permissions)) {
@@ -101,6 +105,16 @@ class MainActivity : ComponentActivity() {
         } else {
             emptyArray()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val adapter = bluetoothAdapter()
+        val currentEnabled = adapter?.isEnabled == true
+        if (lastBluetoothEnabled != null && lastBluetoothEnabled != currentEnabled) {
+            recreate()
+        }
+        lastBluetoothEnabled = currentEnabled
     }
 
     private fun hasPermissions(permissions: Array<String>): Boolean {

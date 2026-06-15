@@ -61,13 +61,13 @@ fun WatchReceiverScreen(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            if (state.status == ReceiverStatus.Failed || state.status == ReceiverStatus.Idle) {
+            if (state.status == ReceiverStatus.Failed || state.status == ReceiverStatus.Idle || state.status == ReceiverStatus.Success) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = onRetry,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5))
                 ) {
-                    Text("开始接收")
+                    Text(if (state.status == ReceiverStatus.Success) "继续接收" else "开始接收")
                 }
             }
         }
