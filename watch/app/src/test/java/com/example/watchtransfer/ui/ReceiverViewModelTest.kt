@@ -1,6 +1,7 @@
 package com.example.watchtransfer.ui
 
 import com.example.watchtransfer.bluetooth.BluetoothReceiveEvent
+import com.example.watchtransfer.receiver.TransferProgress
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
@@ -60,6 +61,34 @@ class ReceiverViewModelTest {
 
         assertEquals(ReceiverStatus.Failed, viewModel.uiState.value.status)
         assertEquals("文件校验失败", viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun mapsProgressEventIntoReceivingState() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val viewModel = ReceiverViewModel(
+            receiveOnce = {
+                flow {
+                    emit(BluetoothReceiveEvent.Progress(
+                        TransferProgress(
+                            fileName = "photo.jpg",
+                            bytesReceived = 500L,
+                            totalBytes = 1000L
+                        )
+                    ))
+                }
+            },
+            dispatcher = dispatcher
+        )
+
+        viewModel.startReceiving()
+        advanceUntilIdle()
+
+        assertEquals(ReceiverStatus.Receiving, viewModel.uiState.value.status)
+        assertEquals("photo.jpg", viewModel.uiState.value.fileName)
+        assertEquals(500L, viewModel.uiState.value.bytesReceived)
+        assertEquals(1000L, viewModel.uiState.value.totalBytes)
+        assertEquals(0.5f, viewModel.uiState.value.progressFraction, 0.001f)
     }
 }
 

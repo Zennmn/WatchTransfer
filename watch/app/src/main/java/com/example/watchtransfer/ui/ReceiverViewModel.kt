@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ReceiverViewModel(
@@ -38,34 +39,35 @@ class ReceiverViewModel(
     }
 
     private fun reduce(event: BluetoothReceiveEvent) {
-        val current = _uiState.value
-        _uiState.value = when (event) {
-            BluetoothReceiveEvent.Waiting -> current.copy(
-                status = ReceiverStatus.Waiting,
-                message = "等待手机连接"
-            )
-            is BluetoothReceiveEvent.Connected -> current.copy(
-                status = ReceiverStatus.Connected,
-                remoteName = event.remoteName,
-                message = "已连接"
-            )
-            is BluetoothReceiveEvent.Progress -> current.copy(
-                status = ReceiverStatus.Receiving,
-                fileName = event.progress.fileName,
-                bytesReceived = event.progress.bytesReceived,
-                totalBytes = event.progress.totalBytes,
-                message = "正在接收"
-            )
-            is BluetoothReceiveEvent.Completed -> current.copy(
-                status = ReceiverStatus.Success,
-                savedPath = event.displayPath,
-                successCount = current.successCount + 1,
-                message = "保存成功"
-            )
-            is BluetoothReceiveEvent.Failed -> current.copy(
-                status = ReceiverStatus.Failed,
-                message = event.message
-            )
+        _uiState.update { current ->
+            when (event) {
+                BluetoothReceiveEvent.Waiting -> current.copy(
+                    status = ReceiverStatus.Waiting,
+                    message = "等待手机连接"
+                )
+                is BluetoothReceiveEvent.Connected -> current.copy(
+                    status = ReceiverStatus.Connected,
+                    remoteName = event.remoteName,
+                    message = "已连接"
+                )
+                is BluetoothReceiveEvent.Progress -> current.copy(
+                    status = ReceiverStatus.Receiving,
+                    fileName = event.progress.fileName,
+                    bytesReceived = event.progress.bytesReceived,
+                    totalBytes = event.progress.totalBytes,
+                    message = "正在接收"
+                )
+                is BluetoothReceiveEvent.Completed -> current.copy(
+                    status = ReceiverStatus.Success,
+                    savedPath = event.displayPath,
+                    successCount = current.successCount + 1,
+                    message = "保存成功"
+                )
+                is BluetoothReceiveEvent.Failed -> current.copy(
+                    status = ReceiverStatus.Failed,
+                    message = event.message
+                )
+            }
         }
     }
 }
