@@ -609,7 +609,7 @@ git commit -m "feat: add watch transfer protocol parser"
 - Create: `watch/app/src/main/java/com/example/watchtransfer/receiver/TransferResult.kt`
 - Create: `watch/app/src/main/java/com/example/watchtransfer/receiver/TransferSessionReceiver.kt`
 
-- [ ] **Step 1: Write failing transfer engine tests**
+- [x] **Step 1: Write failing transfer engine tests**
 
 Create `watch/app/src/test/java/com/example/watchtransfer/receiver/TransferSessionReceiverTest.kt`:
 
@@ -744,7 +744,7 @@ class TransferSessionReceiverTest {
 }
 ```
 
-- [ ] **Step 2: Run transfer engine tests to verify they fail**
+- [x] **Step 2: Run transfer engine tests to verify they fail**
 
 Run from `watch/`:
 
@@ -754,7 +754,7 @@ Run from `watch/`:
 
 Expected: FAIL because receiver classes do not exist.
 
-- [ ] **Step 3: Implement transfer engine contracts**
+- [x] **Step 3: Implement transfer engine contracts**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/receiver/IncomingFileStore.kt`:
 
@@ -793,7 +793,7 @@ sealed interface TransferResult {
 }
 ```
 
-- [ ] **Step 4: Implement transfer engine**
+- [x] **Step 4: Implement transfer engine**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/receiver/TransferSessionReceiver.kt`:
 
@@ -864,7 +864,7 @@ class TransferSessionReceiver(
 }
 ```
 
-- [ ] **Step 5: Run transfer engine tests**
+- [x] **Step 5: Run transfer engine tests**
 
 Run from `watch/`:
 
@@ -874,7 +874,7 @@ Run from `watch/`:
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit transfer engine**
+- [x] **Step 6: Commit transfer engine**
 
 ```powershell
 git add watch/app/src/main/java/com/example/watchtransfer/receiver watch/app/src/test/java/com/example/watchtransfer/receiver
@@ -889,7 +889,7 @@ git commit -m "feat: add watch transfer session receiver"
 - Create: `watch/app/src/main/java/com/example/watchtransfer/storage/DownloadFileStore.kt`
 - Create: `watch/app/src/androidTest/java/com/example/watchtransfer/storage/DownloadFileStoreTest.kt`
 
-- [ ] **Step 1: Write failing instrumented storage test**
+- [x] **Step 1: Write failing instrumented storage test**
 
 Create `watch/app/src/androidTest/java/com/example/watchtransfer/storage/DownloadFileStoreTest.kt`:
 
@@ -933,7 +933,7 @@ class DownloadFileStoreTest {
 }
 ```
 
-- [ ] **Step 2: Run storage test to verify it fails**
+- [x] **Step 2: Run storage test to verify it fails**
 
 Run from `watch/` with a connected Android device or emulator:
 
@@ -943,7 +943,7 @@ Run from `watch/` with a connected Android device or emulator:
 
 Expected: FAIL because `DownloadFileStore` does not exist.
 
-- [ ] **Step 3: Implement `MediaStore.Downloads` file store**
+- [x] **Step 3: Implement `MediaStore.Downloads` file store**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/storage/DownloadFileStore.kt`:
 
@@ -1007,7 +1007,7 @@ class MediaStoreIncomingFile(
 }
 ```
 
-- [ ] **Step 4: Run storage instrumented test**
+- [x] **Step 4: Run storage instrumented test**
 
 Run from `watch/`:
 
@@ -1017,7 +1017,7 @@ Run from `watch/`:
 
 Expected: PASS on a connected device or emulator with public downloads support.
 
-- [ ] **Step 5: Commit storage**
+- [x] **Step 5: Commit storage**
 
 ```powershell
 git add watch/app/src/main/java/com/example/watchtransfer/storage watch/app/src/androidTest/java/com/example/watchtransfer/storage
@@ -1032,7 +1032,7 @@ git commit -m "feat: save received files to downloads"
 - Create: `watch/app/src/test/java/com/example/watchtransfer/bluetooth/BluetoothReceiveServerTest.kt`
 - Create: `watch/app/src/main/java/com/example/watchtransfer/bluetooth/BluetoothReceiveServer.kt`
 
-- [ ] **Step 1: Write failing Bluetooth server seam test**
+- [x] **Step 1: Write failing Bluetooth server seam test**
 
 Create `watch/app/src/test/java/com/example/watchtransfer/bluetooth/BluetoothReceiveServerTest.kt`:
 
@@ -1101,7 +1101,7 @@ class BluetoothReceiveServerTest {
 }
 ```
 
-- [ ] **Step 2: Run Bluetooth tests to verify they fail**
+- [x] **Step 2: Run Bluetooth tests to verify they fail**
 
 Run from `watch/`:
 
@@ -1111,7 +1111,7 @@ Run from `watch/`:
 
 Expected: FAIL because Bluetooth server classes do not exist.
 
-- [ ] **Step 3: Implement Bluetooth server seam and Android wrapper**
+- [x] **Step 3: Implement Bluetooth server seam and Android wrapper**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/bluetooth/BluetoothReceiveServer.kt`:
 
@@ -1242,7 +1242,7 @@ private class AndroidConnectedSocket(
 }
 ```
 
-- [ ] **Step 4: Run Bluetooth tests**
+- [x] **Step 4: Run Bluetooth tests**
 
 Run from `watch/`:
 
@@ -1252,7 +1252,7 @@ Run from `watch/`:
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Bluetooth server**
+- [x] **Step 5: Commit Bluetooth server**
 
 ```powershell
 git add watch/app/src/main/java/com/example/watchtransfer/bluetooth watch/app/src/test/java/com/example/watchtransfer/bluetooth
@@ -1268,7 +1268,7 @@ git commit -m "feat: add bluetooth receive server"
 - Create: `watch/app/src/main/java/com/example/watchtransfer/ui/ReceiverUiState.kt`
 - Create: `watch/app/src/main/java/com/example/watchtransfer/ui/ReceiverViewModel.kt`
 
-- [ ] **Step 1: Write failing ViewModel state tests**
+- [x] **Step 1: Write failing ViewModel state tests**
 
 Create `watch/app/src/test/java/com/example/watchtransfer/ui/ReceiverViewModelTest.kt`:
 
@@ -1352,7 +1352,7 @@ class MainDispatcherRule(
 }
 ```
 
-- [ ] **Step 2: Run ViewModel tests to verify they fail**
+- [x] **Step 2: Run ViewModel tests to verify they fail**
 
 Run from `watch/`:
 
@@ -1362,7 +1362,7 @@ Run from `watch/`:
 
 Expected: FAIL because UI state classes do not exist.
 
-- [ ] **Step 3: Implement UI state model**
+- [x] **Step 3: Implement UI state model**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/ui/ReceiverUiState.kt`:
 
@@ -1395,7 +1395,7 @@ data class ReceiverUiState(
 }
 ```
 
-- [ ] **Step 4: Implement ViewModel**
+- [x] **Step 4: Implement ViewModel**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/ui/ReceiverViewModel.kt`:
 
@@ -1473,7 +1473,7 @@ class ReceiverViewModel(
 }
 ```
 
-- [ ] **Step 5: Run ViewModel tests**
+- [x] **Step 5: Run ViewModel tests**
 
 Run from `watch/`:
 
@@ -1483,7 +1483,7 @@ Run from `watch/`:
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit ViewModel**
+- [x] **Step 6: Commit ViewModel**
 
 ```powershell
 git add watch/app/src/main/java/com/example/watchtransfer/ui watch/app/src/test/java/com/example/watchtransfer/ui
@@ -1499,7 +1499,7 @@ git commit -m "feat: add receiver view model state"
 - Create: `watch/app/src/main/java/com/example/watchtransfer/ui/WatchReceiverScreen.kt`
 - Modify: `watch/app/src/main/java/com/example/watchtransfer/MainActivity.kt`
 
-- [ ] **Step 1: Write failing Compose UI test**
+- [x] **Step 1: Write failing Compose UI test**
 
 Create `watch/app/src/androidTest/java/com/example/watchtransfer/ui/WatchReceiverScreenTest.kt`:
 
@@ -1548,7 +1548,7 @@ class WatchReceiverScreenTest {
 }
 ```
 
-- [ ] **Step 2: Run Compose UI test to verify it fails**
+- [x] **Step 2: Run Compose UI test to verify it fails**
 
 Run from `watch/`:
 
@@ -1558,7 +1558,7 @@ Run from `watch/`:
 
 Expected: FAIL because `WatchReceiverScreen` does not exist.
 
-- [ ] **Step 3: Implement round-screen Compose UI**
+- [x] **Step 3: Implement round-screen Compose UI**
 
 Create `watch/app/src/main/java/com/example/watchtransfer/ui/WatchReceiverScreen.kt`:
 
@@ -1681,7 +1681,7 @@ private fun detailFor(state: ReceiverUiState): String = when (state.status) {
 }
 ```
 
-- [ ] **Step 4: Replace placeholder activity with permission and receiver wiring**
+- [x] **Step 4: Replace placeholder activity with permission and receiver wiring**
 
 Modify `watch/app/src/main/java/com/example/watchtransfer/MainActivity.kt`:
 
@@ -1800,7 +1800,7 @@ class MainActivity : ComponentActivity() {
 }
 ```
 
-- [ ] **Step 5: Build activity and UI wiring**
+- [x] **Step 5: Build activity and UI wiring**
 
 Run:
 
@@ -1810,7 +1810,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 6: Run UI tests**
+- [x] **Step 6: Run UI tests**
 
 Run from `watch/`:
 
@@ -1820,7 +1820,7 @@ Run from `watch/`:
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit UI and wiring**
+- [x] **Step 7: Commit UI and wiring**
 
 ```powershell
 git add watch/app/src/main/java/com/example/watchtransfer/MainActivity.kt watch/app/src/main/java/com/example/watchtransfer/ui watch/app/src/androidTest/java/com/example/watchtransfer/ui watch/app/build.gradle.kts
@@ -1834,7 +1834,7 @@ git commit -m "feat: add watch receiver ui"
 **Files:**
 - Modify only if verification exposes a concrete failing test or compile error.
 
-- [ ] **Step 1: Run JVM test suite**
+- [x] **Step 1: Run JVM test suite**
 
 Run from `watch/`:
 
@@ -1844,7 +1844,7 @@ Run from `watch/`:
 
 Expected: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 2: Run Android instrumented tests**
+- [x] **Step 2: Run Android instrumented tests**
 
 Run from `watch/` with a connected Android device or OPPO Watch X:
 
@@ -1854,7 +1854,7 @@ Run from `watch/` with a connected Android device or OPPO Watch X:
 
 Expected: `BUILD SUCCESSFUL`.
 
-- [ ] **Step 3: Build debug APK**
+- [x] **Step 3: Build debug APK**
 
 Run from `watch/`:
 
@@ -1868,7 +1868,7 @@ Expected APK:
 watch/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-- [ ] **Step 4: Install on OPPO Watch X**
+- [ ] **Step 4: Install on OPPO Watch X** (manual - requires device)
 
 Run:
 
@@ -1879,7 +1879,7 @@ adb install -r watch/app/build/outputs/apk/debug/app-debug.apk
 
 Expected: `Success`.
 
-- [ ] **Step 5: Verify receiver screen**
+- [ ] **Step 5: Verify receiver screen** (manual - requires device)
 
 Open `Watch Transfer` on the watch.
 
@@ -1889,7 +1889,7 @@ Expected:
 - If Bluetooth is off, the app shows `蓝牙未开启`.
 - If Bluetooth is on, the app shows `等待手机连接`.
 
-- [ ] **Step 6: Verify transfer with a temporary sender**
+- [ ] **Step 6: Verify transfer with a temporary sender** (manual - requires device)
 
 Before the phone app exists, use a small Android sender app or an `adb`-installed test utility that connects to UUID `8d520b7a-9f29-4ce1-8a8e-f3a1e2f7b921` and writes the protocol packet:
 
@@ -1911,7 +1911,7 @@ Expected on watch:
 - On success, screen shows `保存成功`.
 - Saved path is `Download/WatchTransfer/<file-name>`.
 
-- [ ] **Step 7: Verify failed checksum cleanup**
+- [ ] **Step 7: Verify failed checksum cleanup** (manual - requires device)
 
 Send the same packet with an intentionally wrong `sha256Hex`.
 
