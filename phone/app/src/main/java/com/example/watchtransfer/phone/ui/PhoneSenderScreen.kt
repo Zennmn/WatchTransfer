@@ -23,8 +23,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+data class DeviceUiItem(
+    val name: String,
+    val address: String
+)
+
 data class PhoneSenderUiState(
     val selectedDeviceName: String = "",
+    val devices: List<DeviceUiItem> = emptyList(),
     val files: List<PhoneFileUiItem> = emptyList(),
     val currentStatus: String = "准备发送文件到手表",
     val currentProgress: Float = 0f,
