@@ -25,8 +25,8 @@ class WatchTransferSender(
     private val socketFactory: suspend () -> ClientSocket,
     private val protocol: TransferProtocol = TransferProtocol(),
     private val bufferSize: Int = DEFAULT_BUFFER_SIZE
-) {
-    suspend fun send(
+) : QueueFileSender {
+    override suspend fun send(
         file: TransferFileSource,
         onProgress: (sentBytes: Long, totalBytes: Long) -> Unit
     ): SendFileResult = withContext(Dispatchers.IO) {
