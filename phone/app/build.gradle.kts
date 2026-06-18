@@ -73,6 +73,13 @@ val asciiDebugUnitTestClassesDir = providers.provider {
     )
 }
 
+val asciiDebugUnitTestDepsDir = providers.provider {
+    File(
+        System.getProperty("java.io.tmpdir"),
+        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${project.name}/debugUnitTestDeps"
+    )
+}
+
 val syncDebugUnitTestClassesToAsciiPath by tasks.registering(Sync::class) {
     dependsOn(
         "compileDebugKotlin",
@@ -87,12 +94,27 @@ val syncDebugUnitTestClassesToAsciiPath by tasks.registering(Sync::class) {
     into(asciiDebugUnitTestClassesDir)
 }
 
+val syncDebugUnitTestDepsToAsciiPath by tasks.registering(Sync::class) {
+    dependsOn("compileDebugKotlin", "compileDebugUnitTestKotlin")
+    from(configurations["debugUnitTestRuntimeClasspath"])
+    into(asciiDebugUnitTestDepsDir)
+    eachFile {
+        // Flatten: put all JARs directly into the target dir
+        path = file.name
+    }
+}
+
 afterEvaluate {
     tasks.named("testDebugUnitTest").configure {
         dependsOn(syncDebugUnitTestClassesToAsciiPath)
+        dependsOn(syncDebugUnitTestDepsToAsciiPath)
         (this as org.gradle.api.tasks.testing.Test).apply {
             testClassesDirs = files(asciiDebugUnitTestClassesDir)
-            classpath = files(asciiDebugUnitTestClassesDir) + classpath
+            val depsDir = asciiDebugUnitTestDepsDir.get()
+            val depJars = if (depsDir.exists()) depsDir.listFiles()?.filter { it.extension == "jar" } ?: emptyList() else emptyList()
+            classpath = files(asciiDebugUnitTestClassesDir) + files(depJars) + classpath.filter { file ->
+                file.absolutePath.all { it.code < 128 }
+            }
         }
     }
 }
