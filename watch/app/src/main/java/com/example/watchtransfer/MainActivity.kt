@@ -10,13 +10,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.watchtransfer.bluetooth.AndroidRfcommSocketFactory
 import com.example.watchtransfer.bluetooth.BluetoothReceiveServer
@@ -74,14 +77,29 @@ class MainActivity : ComponentActivity() {
                     object : ViewModelProvider.Factory {
                         @Suppress("UNCHECKED_CAST")
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                            return ReceiverViewModel(receiveOnce = { server.receiveOnce() }) as T
+                            return ReceiverViewModel(receiveOnce = { server.receiveContinuously() }) as T
                         }
                     }
                 }
                 val viewModel: ReceiverViewModel = viewModel(factory = factory)
                 val state by viewModel.uiState.collectAsState()
-                LaunchedEffect(Unit) {
-                    viewModel.startReceiving()
+                val lifecycleOwner = LocalLifecycleOwner.current
+                DisposableEffect(lifecycleOwner, viewModel) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        when (event) {
+                            Lifecycle.Event.ON_START -> viewModel.startReceiving()
+                            Lifecycle.Event.ON_STOP -> viewModel.stopReceiving()
+                            else -> Unit
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                        viewModel.startReceiving()
+                    }
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                        viewModel.stopReceiving()
+                    }
                 }
                 WatchReceiverScreen(
                     state = state,

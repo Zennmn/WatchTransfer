@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
+import com.example.watchtransfer.protocol.TransferAck
 import com.example.watchtransfer.protocol.TransferConstants
+import com.example.watchtransfer.protocol.TransferProtocol
 import com.example.watchtransfer.receiver.IncomingFileStore
 import com.example.watchtransfer.receiver.TransferProgress
 import com.example.watchtransfer.receiver.TransferResult
@@ -12,10 +14,15 @@ import com.example.watchtransfer.receiver.TransferSessionReceiver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.InputStream
+import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicReference
 
 sealed interface BluetoothReceiveEvent {
@@ -56,13 +63,15 @@ interface RfcommServerSocket {
 interface ConnectedSocket {
     val remoteName: String
     fun inputStream(): InputStream
+    fun outputStream(): OutputStream
     fun close()
 }
 
 class BluetoothReceiveServer(
     private val socketFactory: RfcommSocketFactory,
     private val sessionReceiver: SessionReceiver,
-    private val store: IncomingFileStore
+    private val store: IncomingFileStore,
+    private val protocol: TransferProtocol = TransferProtocol()
 ) {
     fun receiveOnce(): Flow<BluetoothReceiveEvent> = callbackFlow {
         val serverSocketRef = AtomicReference<RfcommServerSocket?>()
@@ -82,10 +91,14 @@ class BluetoothReceiveServer(
                         trySend(BluetoothReceiveEvent.Progress(progress))
                     }
                     when (result) {
-                        is TransferResult.Success -> send(
-                            BluetoothReceiveEvent.Completed(result.displayPath, result.bytesWritten)
-                        )
-                        is TransferResult.Failure -> send(BluetoothReceiveEvent.Failed(result.message))
+                        is TransferResult.Success -> {
+                            protocol.writeAck(socket.outputStream(), TransferAck.Success(result.displayPath))
+                            send(BluetoothReceiveEvent.Completed(result.displayPath, result.bytesWritten))
+                        }
+                        is TransferResult.Failure -> {
+                            protocol.writeAck(socket.outputStream(), TransferAck.Failure(result.message))
+                            send(BluetoothReceiveEvent.Failed(result.message))
+                        }
                     }
                 } finally {
                     socketRef.getAndSet(null)?.closeIgnoringErrors()
@@ -105,6 +118,21 @@ class BluetoothReceiveServer(
             socketRef.getAndSet(null)?.closeIgnoringErrors()
             serverSocketRef.getAndSet(null)?.closeIgnoringErrors()
             worker.cancel()
+        }
+    }
+
+    fun receiveContinuously(pauseAfterSessionMillis: Long = 800L): Flow<BluetoothReceiveEvent> = flow {
+        while (currentCoroutineContext().isActive) {
+            var sessionEnded = false
+            receiveOnce().collect { event ->
+                emit(event)
+                if (event is BluetoothReceiveEvent.Completed || event is BluetoothReceiveEvent.Failed) {
+                    sessionEnded = true
+                }
+            }
+            if (sessionEnded && pauseAfterSessionMillis > 0L) {
+                delay(pauseAfterSessionMillis)
+            }
         }
     }
 }
@@ -146,5 +174,6 @@ private class AndroidConnectedSocket(
         get() = delegate.remoteDevice?.name ?: "Android 手机"
 
     override fun inputStream(): InputStream = delegate.inputStream
+    override fun outputStream(): OutputStream = delegate.outputStream
     override fun close() = delegate.close()
 }

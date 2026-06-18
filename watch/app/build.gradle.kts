@@ -86,6 +86,7 @@ val syncDebugUnitTestClassesToAsciiPath by tasks.registering(Sync::class) {
     from(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes"))
     from(layout.buildDirectory.dir("tmp/kotlin-classes/debugUnitTest"))
     from(layout.buildDirectory.dir("intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"))
+    from(project(":shared:transfer-protocol").layout.buildDirectory.dir("libs"))
     into(asciiDebugUnitTestClassesDir)
 }
 
@@ -95,6 +96,8 @@ afterEvaluate {
         (this as org.gradle.api.tasks.testing.Test).apply {
             testClassesDirs = files(asciiDebugUnitTestClassesDir)
             classpath = files(asciiDebugUnitTestClassesDir) + classpath
+            // Also add the protocol module JAR from the ASCII path
+            classpath = files(asciiDebugUnitTestClassesDir.map { File(it, "transfer-protocol.jar") }) + classpath
         }
     }
 }
