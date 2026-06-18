@@ -70,6 +70,7 @@ class SendQueueViewModel(
     val uiState: StateFlow<SendQueueUiState> = _uiState.asStateFlow()
 
     fun setFiles(files: List<QueueFile>) {
+        if (sendJob?.isActive == true) return
         queueFiles.clear()
         queueFiles.addAll(files)
         _uiState.value = SendQueueUiState(
@@ -87,12 +88,13 @@ class SendQueueViewModel(
 
     fun startSending() {
         if (sendJob?.isActive == true || queueFiles.isEmpty()) return
+        val filesToSend = queueFiles.toList()
         sendJob = viewModelScope.launch(dispatcher) {
             _uiState.update { it.copy(queueStatus = QueueStatus.Sending, currentStatus = "准备发送") }
             var failureCount = 0
             var totalSentBeforeCurrent = 0L
 
-            for (file in queueFiles) {
+            for (file in filesToSend) {
                 _uiState.update {
                     it.copy(
                         currentFileId = file.id,
@@ -126,7 +128,7 @@ class SendQueueViewModel(
 
             val finalStatus = when {
                 failureCount == 0 -> QueueStatus.Success
-                failureCount == queueFiles.size -> QueueStatus.Failed
+                failureCount == filesToSend.size -> QueueStatus.Failed
                 else -> QueueStatus.PartialFailed
             }
             _uiState.update {
