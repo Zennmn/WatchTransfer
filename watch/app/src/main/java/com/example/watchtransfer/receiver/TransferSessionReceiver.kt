@@ -1,5 +1,6 @@
 package com.example.watchtransfer.receiver
 
+import com.example.watchtransfer.protocol.Sha256
 import com.example.watchtransfer.protocol.TransferConstants
 import com.example.watchtransfer.protocol.TransferProtocol
 import java.security.MessageDigest
@@ -49,7 +50,7 @@ class TransferSessionReceiver(
                 }
             }
 
-            val actualSha = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+            val actualSha = Sha256.hex(digest.digest())
             if (actualSha != header.sha256Hex) {
                 target.abort()
                 TransferResult.Failure("文件校验失败")
