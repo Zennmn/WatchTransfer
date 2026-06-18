@@ -34,6 +34,27 @@ class WatchTransferSenderTest {
     }
 
     @Test
+    fun opensInputStreamOnlyOnce() = runTest {
+        val content = "single pass".encodeToByteArray()
+        val socket = FakeClientSocket(ackBytes = ackBytes(TransferAck.Success("ok")))
+        var openCount = 0
+        val file = object : TransferFileSource {
+            override val displayName = "test.txt"
+            override val mimeType = "text/plain"
+            override val sizeBytes = content.size.toLong()
+            override fun openInputStream(): java.io.InputStream {
+                openCount++
+                return ByteArrayInputStream(content)
+            }
+        }
+        val sender = WatchTransferSender(socketFactory = { socket })
+
+        sender.send(file = file, onProgress = { _, _ -> })
+
+        assertEquals("File should be opened only once, but was opened $openCount times", 1, openCount)
+    }
+
+    @Test
     fun returnsFailureWhenWatchSendsFailureAck() = runTest {
         val socket = FakeClientSocket(ackBytes = ackBytes(TransferAck.Failure("文件校验失败")))
         val sender = WatchTransferSender(socketFactory = { socket })

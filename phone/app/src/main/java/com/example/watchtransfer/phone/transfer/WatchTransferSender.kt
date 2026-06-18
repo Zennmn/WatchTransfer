@@ -31,7 +31,9 @@ class WatchTransferSender(
         onProgress: (sentBytes: Long, totalBytes: Long) -> Unit
     ): SendFileResult = withContext(Dispatchers.IO) {
         try {
-            val sha = file.openInputStream().use { input -> Sha256.hex(input) }
+            // Read file into memory once (max 30MB) to avoid double-open of content URI
+            val fileBytes = file.openInputStream().use { it.readBytes() }
+            val sha = Sha256.hex(fileBytes)
             val socket = socketFactory()
             socket.useClient {
                 val output = BufferedOutputStream(socket.outputStream())
@@ -40,20 +42,19 @@ class WatchTransferSender(
                     TransferHeader(
                         fileName = file.displayName,
                         mimeType = file.mimeType,
-                        fileSize = file.sizeBytes,
+                        fileSize = fileBytes.size.toLong(),
                         sha256Hex = sha
                     )
                 )
-                file.openInputStream().use { input ->
-                    val buffer = ByteArray(bufferSize)
-                    var sent = 0L
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
-                        sent += read
-                        onProgress(sent, file.sizeBytes)
-                    }
+                // Stream from cached bytes
+                var sent = 0L
+                var offset = 0
+                while (offset < fileBytes.size) {
+                    val toWrite = minOf(bufferSize, fileBytes.size - offset)
+                    output.write(fileBytes, offset, toWrite)
+                    offset += toWrite
+                    sent += toWrite
+                    onProgress(sent, fileBytes.size.toLong())
                 }
                 output.flush()
                 when (val ack = protocol.readAck(socket.inputStream())) {
