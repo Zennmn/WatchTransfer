@@ -49,6 +49,29 @@ class TransferSessionReceiverTest {
     }
 
     @Test
+    fun failsWhenConnectionDropsBeforeAllBytesReceived() {
+        val store = FakeIncomingFileStore()
+        val header = TransferHeader(
+            fileName = "partial.txt",
+            mimeType = "text/plain",
+            fileSize = 100L,
+            sha256Hex = "a".repeat(64)
+        )
+        val output = ByteArrayOutputStream()
+        TransferProtocol().writeHeader(output, header)
+        val partialBody = ByteArray(10) { it.toByte() }
+        output.write(partialBody)
+
+        val input = ByteArrayInputStream(output.toByteArray())
+        val receiver = TransferSessionReceiver(maxFileBytes = 1024)
+
+        val result = receiver.receive(input, store) {}
+
+        assertTrue(result is TransferResult.Failure)
+        assertTrue(store.createdFile.aborted)
+    }
+
+    @Test
     fun rejectsOversizedFileBeforeCreatingOutput() {
         val content = "large".encodeToByteArray()
         val store = FakeIncomingFileStore()

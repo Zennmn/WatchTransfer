@@ -104,6 +104,38 @@ class BluetoothReceiveServerTest {
     }
 
     @Test
+    fun receiveContinuouslyRecoversAfterFailure() = runTest {
+        val first = FakeConnectedSocket("Pixel One")
+        val second = FakeConnectedSocket("Pixel Two")
+        val factory = QueueRfcommSocketFactory(mutableListOf(first, second))
+        var callCount = 0
+        val sessionReceiver = object : SessionReceiver {
+            override fun receive(
+                input: java.io.InputStream,
+                store: IncomingFileStore,
+                onProgress: (com.example.watchtransfer.receiver.TransferProgress) -> Unit
+            ): TransferResult {
+                callCount++
+                return if (callCount == 1) {
+                    TransferResult.Failure("文件校验失败")
+                } else {
+                    TransferResult.Success("Download/WatchTransfer/b.txt", 3L)
+                }
+            }
+        }
+        val server = BluetoothReceiveServer(factory, sessionReceiver, FakeIncomingFileStore())
+
+        val events = server.receiveContinuously(pauseAfterSessionMillis = 0L).take(6).toList()
+
+        assertEquals(BluetoothReceiveEvent.Waiting, events[0])
+        assertEquals(BluetoothReceiveEvent.Connected("Pixel One"), events[1])
+        assertTrue(events[2] is BluetoothReceiveEvent.Failed)
+        assertEquals(BluetoothReceiveEvent.Waiting, events[3])
+        assertEquals(BluetoothReceiveEvent.Connected("Pixel Two"), events[4])
+        assertTrue(events[5] is BluetoothReceiveEvent.Completed)
+    }
+
+    @Test
     fun receiveContinuouslyStartsNextSessionAfterCompletion() = runTest {
         val first = FakeConnectedSocket("Pixel One")
         val second = FakeConnectedSocket("Pixel Two")

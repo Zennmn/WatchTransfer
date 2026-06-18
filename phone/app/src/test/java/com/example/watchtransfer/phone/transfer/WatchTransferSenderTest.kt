@@ -55,6 +55,16 @@ class WatchTransferSenderTest {
     }
 
     @Test
+    fun returnsFailureWhenSocketFactoryThrows() = runTest {
+        val sender = WatchTransferSender(socketFactory = { throw RuntimeException("连接失败") })
+        val result = sender.send(
+            file = FakeTransferFileSource("a.txt", "text/plain", "abc".encodeToByteArray()),
+            onProgress = { _, _ -> }
+        )
+        assertEquals(SendFileResult.Failure("连接失败"), result)
+    }
+
+    @Test
     fun returnsFailureWhenWatchSendsFailureAck() = runTest {
         val socket = FakeClientSocket(ackBytes = ackBytes(TransferAck.Failure("文件校验失败")))
         val sender = WatchTransferSender(socketFactory = { socket })
