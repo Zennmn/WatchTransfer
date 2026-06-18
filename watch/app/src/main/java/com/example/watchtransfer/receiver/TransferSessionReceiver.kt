@@ -50,7 +50,7 @@ class TransferSessionReceiver(
                 }
             }
 
-            val actualSha = Sha256.hex(digest.digest())
+            val actualSha = Sha256.hexFromDigest(digest)
             if (actualSha != header.sha256Hex) {
                 target.abort()
                 TransferResult.Failure("文件校验失败")

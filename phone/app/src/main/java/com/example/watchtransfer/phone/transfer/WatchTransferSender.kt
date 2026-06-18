@@ -5,6 +5,7 @@ import com.example.watchtransfer.protocol.TransferAck
 import com.example.watchtransfer.protocol.TransferHeader
 import com.example.watchtransfer.protocol.TransferProtocol
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import java.io.BufferedOutputStream
 import java.io.InputStream
@@ -32,34 +33,38 @@ class WatchTransferSender(
     ): SendFileResult = withContext(Dispatchers.IO) {
         try {
             // Read file into memory once (max 30MB) to avoid double-open of content URI
-            val fileBytes = file.openInputStream().use { it.readBytes() }
+            val fileBytes = runInterruptible {
+                file.openInputStream().use { it.readBytes() }
+            }
             val sha = Sha256.hex(fileBytes)
             val socket = socketFactory()
             socket.useClient {
-                val output = BufferedOutputStream(socket.outputStream())
-                protocol.writeHeader(
-                    output,
-                    TransferHeader(
-                        fileName = file.displayName,
-                        mimeType = file.mimeType,
-                        fileSize = fileBytes.size.toLong(),
-                        sha256Hex = sha
+                runInterruptible {
+                    val output = BufferedOutputStream(socket.outputStream())
+                    protocol.writeHeader(
+                        output,
+                        TransferHeader(
+                            fileName = file.displayName,
+                            mimeType = file.mimeType,
+                            fileSize = fileBytes.size.toLong(),
+                            sha256Hex = sha
+                        )
                     )
-                )
-                // Stream from cached bytes
-                var sent = 0L
-                var offset = 0
-                while (offset < fileBytes.size) {
-                    val toWrite = minOf(bufferSize, fileBytes.size - offset)
-                    output.write(fileBytes, offset, toWrite)
-                    offset += toWrite
-                    sent += toWrite
-                    onProgress(sent, fileBytes.size.toLong())
-                }
-                output.flush()
-                when (val ack = protocol.readAck(socket.inputStream())) {
-                    is TransferAck.Success -> SendFileResult.Success(ack.message)
-                    is TransferAck.Failure -> SendFileResult.Failure(ack.message)
+                    // Stream from cached bytes
+                    var sent = 0L
+                    var offset = 0
+                    while (offset < fileBytes.size) {
+                        val toWrite = minOf(bufferSize, fileBytes.size - offset)
+                        output.write(fileBytes, offset, toWrite)
+                        offset += toWrite
+                        sent += toWrite
+                        onProgress(sent, fileBytes.size.toLong())
+                    }
+                    output.flush()
+                    when (val ack = protocol.readAck(socket.inputStream())) {
+                        is TransferAck.Success -> SendFileResult.Success(ack.message)
+                        is TransferAck.Failure -> SendFileResult.Failure(ack.message)
+                    }
                 }
             }
         } catch (error: Exception) {

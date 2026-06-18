@@ -18,6 +18,8 @@ data class PairedWatchDevice(
 class PhoneBluetoothClient(
     private val bluetoothAdapter: BluetoothAdapter
 ) {
+    fun isEnabled(): Boolean = bluetoothAdapter.isEnabled
+
     @SuppressLint("MissingPermission")
     fun pairedDevices(): List<PairedWatchDevice> {
         return bluetoothAdapter.bondedDevices

@@ -30,26 +30,51 @@ import com.example.watchtransfer.phone.files.AndroidUriFileSource
 import com.example.watchtransfer.phone.transfer.QueueFile
 import com.example.watchtransfer.phone.transfer.SendQueueViewModel
 import com.example.watchtransfer.phone.transfer.WatchTransferSender
+import com.example.watchtransfer.phone.ui.DeviceUiItem
+import com.example.watchtransfer.phone.ui.PhoneAppStatus
 import com.example.watchtransfer.phone.ui.PhoneFileUiItem
 import com.example.watchtransfer.phone.ui.PhoneSenderScreen
 import com.example.watchtransfer.phone.ui.PhoneSenderUiState
 
 class MainActivity : ComponentActivity() {
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) {}
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val requiredPermissions = requiredBluetoothPermissions()
-        if (!hasPermissions(requiredPermissions)) {
-            permissionLauncher.launch(requiredPermissions)
-        }
 
         setContent {
             MaterialTheme {
-                val bluetoothClient = rememberBluetoothClient()
+                var permissionGranted by remember {
+                    mutableStateOf(hasBluetoothPermission())
+                }
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestMultiplePermissions()
+                ) { results ->
+                    permissionGranted = results.values.all { it }
+                }
+
+                val bluetoothClient = remember {
+                    val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+                    val adapter: BluetoothAdapter? = manager.adapter
+                    adapter?.let { PhoneBluetoothClient(it) }
+                }
+                val isBluetoothOn = remember { mutableStateOf(bluetoothClient?.isEnabled() == true) }
                 var selectedDevice by remember { mutableStateOf<PairedWatchDevice?>(null) }
+                var pairedDevices by remember { mutableStateOf<List<PairedWatchDevice>>(emptyList()) }
+
+                // Refresh paired devices when composable enters or permission changes
+                LaunchedEffect(permissionGranted) {
+                    if (permissionGranted && bluetoothClient != null) {
+                        pairedDevices = bluetoothClient.pairedDevices()
+                    }
+                }
+
+                // Determine app status
+                val appStatus = when {
+                    !permissionGranted -> PhoneAppStatus.MissingPermission
+                    bluetoothClient == null || !isBluetoothOn.value -> PhoneAppStatus.BluetoothOff
+                    pairedDevices.isEmpty() -> PhoneAppStatus.NoBondedWatch
+                    else -> PhoneAppStatus.Ready
+                }
+
                 val sender = remember(selectedDevice) {
                     WatchTransferSender(socketFactory = {
                         val device = requireNotNull(selectedDevice) { "请选择手表" }
@@ -80,7 +105,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val screenState = PhoneSenderUiState(
+                    appStatus = appStatus,
                     selectedDeviceName = selectedDevice?.name.orEmpty(),
+                    devices = pairedDevices.map { DeviceUiItem(name = it.name, address = it.address) },
                     files = queueState.files.map {
                         PhoneFileUiItem(
                             id = it.id,
@@ -100,19 +127,20 @@ class MainActivity : ComponentActivity() {
                     state = screenState,
                     onPickFiles = { filePicker.launch(arrayOf("*/*")) },
                     onPickDevice = {
-                        selectedDevice = bluetoothClient?.pairedDevices()?.firstOrNull()
+                        // This path is used when devices.size == 1 (auto-select)
+                        selectedDevice = pairedDevices.firstOrNull()
+                    },
+                    onDeviceSelected = { deviceItem ->
+                        selectedDevice = pairedDevices.find { it.address == deviceItem.address }
                     },
                     onSend = { viewModel.startSending() },
-                    onCancel = { viewModel.cancelSending() }
+                    onCancel = { viewModel.cancelSending() },
+                    onRequestPermission = {
+                        permissionLauncher.launch(requiredBluetoothPermissions())
+                    }
                 )
             }
         }
-    }
-
-    private fun rememberBluetoothClient(): PhoneBluetoothClient? {
-        val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        val adapter: BluetoothAdapter = manager.adapter ?: return null
-        return PhoneBluetoothClient(adapter)
     }
 
     private fun List<Uri>.toQueueFiles(): List<QueueFile> {
@@ -155,8 +183,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun hasPermissions(permissions: Array<String>): Boolean {
-        return permissions.all { permission ->
+    private fun hasBluetoothPermission(): Boolean {
+        return requiredBluetoothPermissions().all { permission ->
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
         }
     }

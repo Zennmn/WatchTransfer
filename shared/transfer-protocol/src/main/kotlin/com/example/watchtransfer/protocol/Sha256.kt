@@ -10,6 +10,14 @@ object Sha256 {
             .joinToString("") { byte -> "%02x".format(byte) }
     }
 
+    /**
+     * Converts already-computed digest bytes to lowercase hex.
+     * Does NOT re-hash — use this when you've been calling digest.update() incrementally.
+     */
+    fun hexFromDigest(digest: MessageDigest): String {
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
+
     fun hex(input: InputStream): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
