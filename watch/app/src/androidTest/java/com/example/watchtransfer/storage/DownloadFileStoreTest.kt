@@ -16,7 +16,6 @@ class DownloadFileStoreTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val store = DownloadFileStore(context.contentResolver)
         val header = TransferHeader(
-            protocolVersion = 1,
             fileName = "instrumented-note.txt",
             mimeType = "text/plain",
             fileSize = 5L,
@@ -32,6 +31,6 @@ class DownloadFileStoreTest {
         assertEquals("Download/WatchTransfer/instrumented-note.txt", file.displayPath)
         assertTrue(file.uri.toString().isNotBlank())
 
-        context.contentResolver.delete(file.uri, null, null)
+        context.contentResolver.delete(file.uri ?: error("Expected committed file uri"), null, null)
     }
 }

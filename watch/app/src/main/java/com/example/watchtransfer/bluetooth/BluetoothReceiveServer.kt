@@ -73,6 +73,10 @@ class BluetoothReceiveServer(
     private val store: IncomingFileStore,
     private val protocol: TransferProtocol = TransferProtocol()
 ) {
+    companion object {
+        private const val DEFAULT_PAUSE_AFTER_SESSION_MILLIS = 800L
+    }
+
     fun receiveOnce(): Flow<BluetoothReceiveEvent> = callbackFlow {
         val serverSocketRef = AtomicReference<RfcommServerSocket?>()
         val socketRef = AtomicReference<ConnectedSocket?>()
@@ -121,7 +125,7 @@ class BluetoothReceiveServer(
         }
     }
 
-    fun receiveContinuously(pauseAfterSessionMillis: Long = 800L): Flow<BluetoothReceiveEvent> = flow {
+    fun receiveContinuously(pauseAfterSessionMillis: Long = DEFAULT_PAUSE_AFTER_SESSION_MILLIS): Flow<BluetoothReceiveEvent> = flow {
         while (currentCoroutineContext().isActive) {
             var sessionEnded = false
             receiveOnce().collect { event ->
