@@ -1,0 +1,8 @@
+.codegraph/
+.superpowers/
+.gradle/
+build/
+local.properties
+**/.gradle/
+**/build/
+**/local.properties
