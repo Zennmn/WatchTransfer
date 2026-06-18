@@ -4,18 +4,19 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
+import com.example.watchtransfer.protocol.TransferConstants
 import com.example.watchtransfer.receiver.IncomingFileStore
 import com.example.watchtransfer.receiver.TransferProgress
 import com.example.watchtransfer.receiver.TransferResult
 import com.example.watchtransfer.receiver.TransferSessionReceiver
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import java.io.InputStream
-import java.util.UUID
-
-val WatchTransferServiceUuid: UUID = UUID.fromString("8d520b7a-9f29-4ce1-8a8e-f3a1e2f7b921")
+import java.util.concurrent.atomic.AtomicReference
 
 sealed interface BluetoothReceiveEvent {
     data object Waiting : BluetoothReceiveEvent
@@ -63,32 +64,57 @@ class BluetoothReceiveServer(
     private val sessionReceiver: SessionReceiver,
     private val store: IncomingFileStore
 ) {
-    fun receiveOnce(): Flow<BluetoothReceiveEvent> = channelFlow {
-        send(BluetoothReceiveEvent.Waiting)
-        val serverSocket = socketFactory.openServerSocket()
-        try {
-            val socket = serverSocket.accept()
+    fun receiveOnce(): Flow<BluetoothReceiveEvent> = callbackFlow {
+        val serverSocketRef = AtomicReference<RfcommServerSocket?>()
+        val socketRef = AtomicReference<ConnectedSocket?>()
+        val worker = launch(Dispatchers.IO) {
             try {
-                send(BluetoothReceiveEvent.Connected(socket.remoteName))
-                val result = sessionReceiver.receive(socket.inputStream(), store) { progress ->
-                    trySend(BluetoothReceiveEvent.Progress(progress))
+                send(BluetoothReceiveEvent.Waiting)
+                val serverSocket = socketFactory.openServerSocket()
+                serverSocketRef.set(serverSocket)
+
+                val socket = serverSocket.accept()
+                socketRef.set(socket)
+
+                try {
+                    send(BluetoothReceiveEvent.Connected(socket.remoteName))
+                    val result = sessionReceiver.receive(socket.inputStream(), store) { progress ->
+                        trySend(BluetoothReceiveEvent.Progress(progress))
+                    }
+                    when (result) {
+                        is TransferResult.Success -> send(
+                            BluetoothReceiveEvent.Completed(result.displayPath, result.bytesWritten)
+                        )
+                        is TransferResult.Failure -> send(BluetoothReceiveEvent.Failed(result.message))
+                    }
+                } finally {
+                    socketRef.getAndSet(null)?.closeIgnoringErrors()
                 }
-                when (result) {
-                    is TransferResult.Success -> send(
-                        BluetoothReceiveEvent.Completed(result.displayPath, result.bytesWritten)
-                    )
-                    is TransferResult.Failure -> send(BluetoothReceiveEvent.Failed(result.message))
+            } catch (error: Exception) {
+                if (error !is CancellationException) {
+                    trySend(BluetoothReceiveEvent.Failed(error.message ?: "蓝牙接收失败"))
                 }
             } finally {
-                socket.close()
+                socketRef.getAndSet(null)?.closeIgnoringErrors()
+                serverSocketRef.getAndSet(null)?.closeIgnoringErrors()
+                close()
             }
-        } catch (error: Exception) {
-            send(BluetoothReceiveEvent.Failed(error.message ?: "蓝牙接收失败"))
-        } finally {
-            serverSocket.close()
-            close()
         }
-    }.flowOn(Dispatchers.IO)
+
+        awaitClose {
+            socketRef.getAndSet(null)?.closeIgnoringErrors()
+            serverSocketRef.getAndSet(null)?.closeIgnoringErrors()
+            worker.cancel()
+        }
+    }
+}
+
+private fun RfcommServerSocket.closeIgnoringErrors() {
+    runCatching { close() }
+}
+
+private fun ConnectedSocket.closeIgnoringErrors() {
+    runCatching { close() }
 }
 
 class AndroidRfcommSocketFactory(
@@ -97,8 +123,8 @@ class AndroidRfcommSocketFactory(
     @SuppressLint("MissingPermission")
     override fun openServerSocket(): RfcommServerSocket {
         val socket = bluetoothAdapter.listenUsingRfcommWithServiceRecord(
-            "WatchTransferReceiver",
-            WatchTransferServiceUuid
+            TransferConstants.ServiceName,
+            TransferConstants.WatchTransferServiceUuid
         )
         return AndroidRfcommServerSocket(socket)
     }

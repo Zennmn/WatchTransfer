@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.Sync
+import java.security.MessageDigest
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -33,6 +36,8 @@ android {
 }
 
 dependencies {
+    implementation(project(":shared:transfer-protocol"))
+
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
 
     implementation(composeBom)
@@ -54,4 +59,42 @@ dependencies {
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+fun asciiSafePathKey(value: String): String {
+    return MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray())
+        .joinToString("") { byte -> "%02x".format(byte) }
+        .take(12)
+}
+
+val asciiDebugUnitTestClassesDir = providers.provider {
+    File(
+        System.getProperty("java.io.tmpdir"),
+        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${project.name}/debugUnitTest"
+    )
+}
+
+val syncDebugUnitTestClassesToAsciiPath by tasks.registering(Sync::class) {
+    dependsOn(
+        "compileDebugKotlin",
+        "compileDebugJavaWithJavac",
+        "compileDebugUnitTestKotlin",
+        "compileDebugUnitTestJavaWithJavac"
+    )
+    from(layout.buildDirectory.dir("tmp/kotlin-classes/debug"))
+    from(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes"))
+    from(layout.buildDirectory.dir("tmp/kotlin-classes/debugUnitTest"))
+    from(layout.buildDirectory.dir("intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"))
+    into(asciiDebugUnitTestClassesDir)
+}
+
+afterEvaluate {
+    tasks.named("testDebugUnitTest").configure {
+        dependsOn(syncDebugUnitTestClassesToAsciiPath)
+        (this as org.gradle.api.tasks.testing.Test).apply {
+            testClassesDirs = files(asciiDebugUnitTestClassesDir)
+            classpath = files(asciiDebugUnitTestClassesDir) + classpath
+        }
+    }
 }

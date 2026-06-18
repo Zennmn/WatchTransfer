@@ -1,11 +1,12 @@
 package com.example.watchtransfer.receiver
 
+import com.example.watchtransfer.protocol.TransferConstants
 import com.example.watchtransfer.protocol.TransferProtocol
 import java.security.MessageDigest
 
 class TransferSessionReceiver(
     private val protocol: TransferProtocol = TransferProtocol(),
-    private val maxFileBytes: Long = 30L * 1024L * 1024L,
+    private val maxFileBytes: Long = TransferConstants.MaxFileBytes,
     private val bufferSize: Int = 8 * 1024
 ) {
     fun receive(

@@ -1,5 +1,6 @@
 package com.example.watchtransfer.receiver
 
+import com.example.watchtransfer.protocol.Sha256
 import com.example.watchtransfer.protocol.TransferHeader
 import com.example.watchtransfer.protocol.TransferProtocol
 import org.junit.Assert.assertArrayEquals
@@ -8,9 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.DataOutputStream
 import java.io.OutputStream
-import java.security.MessageDigest
 
 class TransferSessionReceiverTest {
     @Test
@@ -72,27 +71,18 @@ class TransferSessionReceiverTest {
         declaredSize: Long = content.size.toLong(),
         shaOverride: String? = null
     ): ByteArray {
-        val sha = shaOverride ?: content.sha256Hex()
-        val nameBytes = fileName.encodeToByteArray()
-        val mimeBytes = mimeType.encodeToByteArray()
         val output = ByteArrayOutputStream()
-        DataOutputStream(output).use { data ->
-            data.write(byteArrayOf('W'.code.toByte(), 'T'.code.toByte(), 'R'.code.toByte(), 'F'.code.toByte()))
-            data.writeByte(1)
-            data.writeShort(nameBytes.size)
-            data.writeShort(mimeBytes.size)
-            data.writeLong(declaredSize)
-            data.write(sha.encodeToByteArray())
-            data.write(nameBytes)
-            data.write(mimeBytes)
-            data.write(content)
-        }
+        TransferProtocol().writeHeader(
+            output,
+            TransferHeader(
+                fileName = fileName,
+                mimeType = mimeType,
+                fileSize = declaredSize,
+                sha256Hex = shaOverride ?: Sha256.hex(content)
+            )
+        )
+        output.write(content)
         return output.toByteArray()
-    }
-
-    private fun ByteArray.sha256Hex(): String {
-        val digest = MessageDigest.getInstance("SHA-256").digest(this)
-        return digest.joinToString("") { byte -> "%02x".format(byte) }
     }
 
     private class FakeIncomingFileStore : IncomingFileStore {
