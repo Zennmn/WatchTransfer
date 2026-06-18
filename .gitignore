@@ -1,6 +1,8 @@
 .codegraph/
 .superpowers/
+.kotlin/
 .gradle/
+.gradle-local/
 build/
 local.properties
 **/.gradle/
