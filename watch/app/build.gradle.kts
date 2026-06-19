@@ -71,7 +71,7 @@ fun asciiSafePathKey(value: String): String {
 val asciiDebugUnitTestClassesDir = providers.provider {
     File(
         System.getProperty("java.io.tmpdir"),
-        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${project.name}/debugUnitTest"
+        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${asciiSafePathKey(project.path)}/debugUnitTest"
     )
 }
 

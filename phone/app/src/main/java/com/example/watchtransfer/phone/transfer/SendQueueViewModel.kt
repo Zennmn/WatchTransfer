@@ -2,6 +2,7 @@ package com.example.watchtransfer.phone.transfer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -70,7 +71,7 @@ class SendQueueViewModel(
     val uiState: StateFlow<SendQueueUiState> = _uiState.asStateFlow()
 
     fun setFiles(files: List<QueueFile>) {
-        if (sendJob?.isActive == true) return
+        if (sendJob != null) return
         queueFiles.clear()
         queueFiles.addAll(files)
         _uiState.value = SendQueueUiState(
@@ -86,10 +87,27 @@ class SendQueueViewModel(
         )
     }
 
+    fun removeFile(id: String) {
+        if (sendJob != null) return
+        val removed = queueFiles.removeAll { it.id == id }
+        if (!removed) return
+        _uiState.update { current ->
+            val files = current.files.filterNot { it.id == id }
+            current.copy(
+                files = files,
+                queueStatus = if (files.isEmpty()) QueueStatus.Idle else QueueStatus.Ready,
+                currentStatus = "准备发送文件到手表",
+                currentFileId = "",
+                totalBytes = queueFiles.sumOf { it.source.sizeBytes },
+                sentBytes = 0L
+            )
+        }
+    }
+
     fun startSending() {
-        if (sendJob?.isActive == true || queueFiles.isEmpty()) return
+        if (sendJob != null || queueFiles.isEmpty()) return
         val filesToSend = queueFiles.toList()
-        sendJob = viewModelScope.launch(dispatcher) {
+        val job = viewModelScope.launch(dispatcher) {
             _uiState.update { it.copy(queueStatus = QueueStatus.Sending, currentStatus = "准备发送") }
             var failureCount = 0
             var totalSentBeforeCurrent = 0L
@@ -102,13 +120,19 @@ class SendQueueViewModel(
                         files = it.files.mapFile(file.id) { item -> item.copy(status = "发送中", sentBytes = 0L) }
                     )
                 }
-                val result = sender.send(file.source) { sent, _ ->
-                    _uiState.update { current ->
-                        current.copy(
-                            sentBytes = totalSentBeforeCurrent + sent,
-                            files = current.files.mapFile(file.id) { item -> item.copy(sentBytes = sent) }
-                        )
+                val result = try {
+                    sender.send(file.source) { sent, _ ->
+                        _uiState.update { current ->
+                            current.copy(
+                                sentBytes = totalSentBeforeCurrent + sent,
+                                files = current.files.mapFile(file.id) { item -> item.copy(sentBytes = sent) }
+                            )
+                        }
                     }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    SendFileResult.Failure(error.message ?: "发送失败")
                 }
                 when (result) {
                     is SendFileResult.Success -> {
@@ -145,11 +169,16 @@ class SendQueueViewModel(
                 )
             }
         }
+        sendJob = job
+        job.invokeOnCompletion {
+            if (sendJob === job) {
+                sendJob = null
+            }
+        }
     }
 
     fun cancelSending() {
         sendJob?.cancel()
-        sendJob = null
         _uiState.update {
             it.copy(
                 queueStatus = QueueStatus.Cancelled,

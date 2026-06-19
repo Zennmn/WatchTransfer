@@ -25,33 +25,57 @@ class DownloadFileStore(
             ?: throw IllegalStateException("无法创建下载文件")
 
         return MediaStoreIncomingFile(
-            contentResolver = contentResolver,
+            operations = ContentResolverMediaStoreFileOperations(contentResolver, uri),
             uri = uri,
             displayName = header.fileName
         )
     }
 }
 
-class MediaStoreIncomingFile(
-    private val contentResolver: ContentResolver,
-    val uri: Uri,
-    private val displayName: String
-) : IncomingFile {
-    override val displayPath: String = "Download/WatchTransfer/$displayName"
+interface MediaStoreFileOperations {
+    fun openOutputStream(): OutputStream
+    fun commit(): Int
+    fun delete(): Int
+}
 
+private class ContentResolverMediaStoreFileOperations(
+    private val contentResolver: ContentResolver,
+    private val uri: Uri
+) : MediaStoreFileOperations {
     override fun openOutputStream(): OutputStream {
         return contentResolver.openOutputStream(uri)
             ?: throw IllegalStateException("无法写入下载文件")
     }
 
-    override fun commit() {
+    override fun commit(): Int {
         val values = ContentValues().apply {
             put(MediaStore.Downloads.IS_PENDING, 0)
         }
-        contentResolver.update(uri, values, null, null)
+        return contentResolver.update(uri, values, null, null)
+    }
+
+    override fun delete(): Int = contentResolver.delete(uri, null, null)
+}
+
+class MediaStoreIncomingFile(
+    private val operations: MediaStoreFileOperations,
+    val uri: Uri?,
+    private val displayName: String
+) : IncomingFile {
+    override val displayPath: String = "Download/WatchTransfer/$displayName"
+
+    override fun openOutputStream(): OutputStream {
+        return operations.openOutputStream()
+    }
+
+    override fun commit() {
+        val updatedRows = operations.commit()
+        if (updatedRows <= 0) {
+            throw IllegalStateException("无法提交下载文件")
+        }
     }
 
     override fun abort() {
-        contentResolver.delete(uri, null, null)
+        operations.delete()
     }
 }

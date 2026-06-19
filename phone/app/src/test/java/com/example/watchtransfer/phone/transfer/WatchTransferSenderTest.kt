@@ -2,12 +2,17 @@ package com.example.watchtransfer.phone.transfer
 
 import com.example.watchtransfer.protocol.TransferAck
 import com.example.watchtransfer.protocol.TransferProtocol
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.util.concurrent.atomic.AtomicBoolean
 
 class WatchTransferSenderTest {
     @Test
@@ -77,6 +82,45 @@ class WatchTransferSenderTest {
         assertEquals(SendFileResult.Failure("文件校验失败"), result)
     }
 
+    @Test
+    fun rethrowsCancellationInsteadOfReturningFailure() = runTest {
+        val sender = WatchTransferSender(socketFactory = {
+            throw AssertionError("socketFactory should not be called")
+        })
+        val file = object : TransferFileSource {
+            override val displayName = "cancel.txt"
+            override val mimeType = "text/plain"
+            override val sizeBytes = 1L
+            override fun openInputStream(): java.io.InputStream {
+                throw CancellationException("cancelled")
+            }
+        }
+
+        try {
+            sender.send(file = file, onProgress = { _, _ -> })
+            fail("Expected CancellationException")
+        } catch (error: CancellationException) {
+            assertEquals("cancelled", error.message)
+        }
+    }
+
+    @Test
+    fun returnsFailureAndClosesSocketWhenAckReadTimesOut() = runTest {
+        val socket = BlockingAckClientSocket()
+        val sender = WatchTransferSender(
+            socketFactory = { socket },
+            sessionTimeoutMillis = 50L
+        )
+
+        val result = sender.send(
+            file = FakeTransferFileSource("timeout.txt", "text/plain", "abc".encodeToByteArray()),
+            onProgress = { _, _ -> }
+        )
+
+        assertEquals(SendFileResult.Failure("发送超时"), result)
+        assertEquals(true, socket.closed.get())
+    }
+
     private fun ackBytes(ack: TransferAck): ByteArray {
         val output = ByteArrayOutputStream()
         TransferProtocol().writeAck(output, ack)
@@ -105,4 +149,38 @@ private class FakeTransferFileSource(
 ) : TransferFileSource {
     override val sizeBytes: Long = bytes.size.toLong()
     override fun openInputStream(): java.io.InputStream = ByteArrayInputStream(bytes)
+}
+
+private class BlockingAckClientSocket : ClientSocket {
+    private val input = BlockingInputStream()
+    val closed = AtomicBoolean(false)
+    val output = ByteArrayOutputStream()
+
+    override fun inputStream(): java.io.InputStream = input
+    override fun outputStream(): java.io.OutputStream = output
+
+    override fun close() {
+        closed.set(true)
+        input.closeBlockingRead()
+    }
+}
+
+private class BlockingInputStream : InputStream() {
+    private val closed = AtomicBoolean(false)
+
+    override fun read(): Int {
+        while (!closed.get()) {
+            try {
+                Thread.sleep(10)
+            } catch (error: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw IOException("interrupted")
+            }
+        }
+        throw IOException("closed")
+    }
+
+    fun closeBlockingRead() {
+        closed.set(true)
+    }
 }

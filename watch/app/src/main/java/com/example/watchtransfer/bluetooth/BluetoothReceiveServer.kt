@@ -13,7 +13,9 @@ import com.example.watchtransfer.receiver.TransferResult
 import com.example.watchtransfer.receiver.TransferSessionReceiver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.callbackFlow
@@ -21,9 +23,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 
 sealed interface BluetoothReceiveEvent {
     data object Waiting : BluetoothReceiveEvent
@@ -71,10 +75,12 @@ class BluetoothReceiveServer(
     private val socketFactory: RfcommSocketFactory,
     private val sessionReceiver: SessionReceiver,
     private val store: IncomingFileStore,
-    private val protocol: TransferProtocol = TransferProtocol()
+    private val protocol: TransferProtocol = TransferProtocol(),
+    private val sessionTimeoutMillis: Long = DEFAULT_SESSION_TIMEOUT_MILLIS
 ) {
     companion object {
         private const val DEFAULT_PAUSE_AFTER_SESSION_MILLIS = 800L
+        private const val DEFAULT_SESSION_TIMEOUT_MILLIS = 60_000L
     }
 
     fun receiveOnce(): Flow<BluetoothReceiveEvent> = callbackFlow {
@@ -91,8 +97,22 @@ class BluetoothReceiveServer(
 
                 try {
                     send(BluetoothReceiveEvent.Connected(socket.remoteName))
-                    val result = sessionReceiver.receive(socket.inputStream(), store) { progress ->
-                        trySend(BluetoothReceiveEvent.Progress(progress))
+                    val timedOut = AtomicBoolean(false)
+                    val result = try {
+                        socket.closeOnSessionTimeout(sessionTimeoutMillis, timedOut) {
+                            runInterruptible {
+                                sessionReceiver.receive(socket.inputStream(), store) { progress ->
+                                    trySend(BluetoothReceiveEvent.Progress(progress))
+                                }
+                            }
+                        }
+                    } catch (error: Exception) {
+                        if (timedOut.get()) {
+                            socketRef.getAndSet(null)?.closeIgnoringErrors()
+                            send(BluetoothReceiveEvent.Failed("接收超时"))
+                            return@launch
+                        }
+                        throw error
                     }
                     when (result) {
                         is TransferResult.Success -> {
@@ -147,6 +167,27 @@ private fun RfcommServerSocket.closeIgnoringErrors() {
 
 private fun ConnectedSocket.closeIgnoringErrors() {
     runCatching { close() }
+}
+
+private suspend inline fun <T> ConnectedSocket.closeOnSessionTimeout(
+    timeoutMillis: Long,
+    timedOut: AtomicBoolean,
+    crossinline block: suspend () -> T
+): T = coroutineScope {
+    val timeoutJob = launch {
+        delay(timeoutMillis)
+        timedOut.set(true)
+        closeIgnoringErrors()
+    }
+    val closeOnCancel = currentCoroutineContext()[Job]?.invokeOnCompletion { cause ->
+        if (cause is CancellationException) closeIgnoringErrors()
+    }
+    try {
+        block()
+    } finally {
+        timeoutJob.cancel()
+        closeOnCancel?.dispose()
+    }
 }
 
 class AndroidRfcommSocketFactory(

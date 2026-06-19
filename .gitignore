@@ -3,8 +3,17 @@
 .kotlin/
 .gradle/
 .gradle-local/
+.idea/
 build/
 local.properties
+.env
+*.iml
+*.jks
+*.keystore
+captures/
+docs/superpowers/plans/
+手机模版/
 **/.gradle/
 **/build/
 **/local.properties
+**/.env

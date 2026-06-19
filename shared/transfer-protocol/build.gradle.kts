@@ -23,13 +23,15 @@ fun asciiSafePathKey(value: String): String {
 val asciiTestClassesDir = providers.provider {
     File(
         System.getProperty("java.io.tmpdir"),
-        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${project.name}/test"
+        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${asciiSafePathKey(project.path)}/test"
     )
 }
 
 val syncTestClassesToAsciiPath by tasks.registering(Sync::class) {
-    dependsOn("compileTestKotlin")
-    from(layout.buildDirectory.dir("tmp/kotlin-classes/test"))
+    dependsOn(tasks.named("classes"))
+    dependsOn(tasks.named("testClasses"))
+    from(sourceSets.main.get().output.classesDirs)
+    from(sourceSets.test.get().output.classesDirs)
     into(asciiTestClassesDir)
 }
 

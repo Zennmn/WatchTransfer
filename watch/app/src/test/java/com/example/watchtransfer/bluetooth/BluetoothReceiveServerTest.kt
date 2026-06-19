@@ -17,6 +17,7 @@ import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -101,6 +102,45 @@ class BluetoothReceiveServerTest {
 
         assertEquals(BluetoothReceiveEvent.Failed("文件校验失败"), events[2])
         assertEquals(TransferAck.Failure("文件校验失败"), socket.ack())
+    }
+
+    @Test
+    fun emitsFailureAndClosesSocketWhenSessionTimesOut() = runBlocking {
+        val socket = FakeConnectedSocket("Pixel Phone")
+        val sessionStarted = CompletableFuture<Unit>()
+        val factory = FakeRfcommSocketFactory(socket)
+        val sessionReceiver = object : SessionReceiver {
+            override fun receive(
+                input: java.io.InputStream,
+                store: IncomingFileStore,
+                onProgress: (com.example.watchtransfer.receiver.TransferProgress) -> Unit
+            ): TransferResult {
+                sessionStarted.complete(Unit)
+                while (!socket.closed) {
+                    try {
+                        Thread.sleep(10)
+                    } catch (error: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                        throw IOException("interrupted")
+                    }
+                }
+                throw IOException("socket closed")
+            }
+        }
+        val server = BluetoothReceiveServer(
+            socketFactory = factory,
+            sessionReceiver = sessionReceiver,
+            store = FakeIncomingFileStore(),
+            sessionTimeoutMillis = 50L
+        )
+
+        val events = server.receiveOnce().toList()
+
+        assertTrue(sessionStarted.isDone)
+        assertEquals(BluetoothReceiveEvent.Waiting, events[0])
+        assertEquals(BluetoothReceiveEvent.Connected("Pixel Phone"), events[1])
+        assertEquals(BluetoothReceiveEvent.Failed("接收超时"), events[2])
+        assertTrue(socket.closed)
     }
 
     @Test

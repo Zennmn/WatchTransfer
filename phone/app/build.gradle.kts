@@ -44,6 +44,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
@@ -69,14 +70,14 @@ fun asciiSafePathKey(value: String): String {
 val asciiDebugUnitTestClassesDir = providers.provider {
     File(
         System.getProperty("java.io.tmpdir"),
-        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${project.name}/debugUnitTest"
+        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${asciiSafePathKey(project.path)}/debugUnitTest"
     )
 }
 
 val asciiDebugUnitTestDepsDir = providers.provider {
     File(
         System.getProperty("java.io.tmpdir"),
-        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${project.name}/debugUnitTestDeps"
+        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${asciiSafePathKey(project.path)}/debugUnitTestDeps"
     )
 }
 
