@@ -1,170 +1,115 @@
 # WatchTransfer
 
-WatchTransfer 是一个 Android 多模块项目，用蓝牙经典 RFCOMM 在手机和 Wear OS 手表之间传输文件。手机端负责选择文件、选择已配对手表并逐个发送；手表端负责持续监听、接收、校验并保存到下载目录。
+WatchTransfer 是一个把手机文件发送到手表的小工具。它通过蓝牙连接手机和 Wear OS 手表，不需要把文件上传到云端，也不需要连接同一个 Wi-Fi。
 
-当前实现面向单向传输场景：手机发送，手表接收。协议版本为 v2，支持 ACK 响应、MIME 类型、SHA-256 完整性校验和多文件队列。
+你可以用它把图片、文本、安装包或其他普通文件从 Android 手机传到手表。文件会保存在手表的 `Download/WatchTransfer/` 目录。
 
-## 功能概览
+## 适合谁
 
-- 手机端 `phone:app`
-  - Jetpack Compose + Material 3 发送界面。
-  - 支持系统文件选择器多选。
-  - 支持 Android 分享入口 `ACTION_SEND` / `ACTION_SEND_MULTIPLE`。
-  - 读取已配对蓝牙设备并选择目标手表。
-  - 多文件队列逐个发送，每个文件独立建立 RFCOMM 连接。
-  - 显示当前文件进度、整体队列状态、成功路径或失败原因。
+- 你有一台 Android 手机。
+- 你有一台支持蓝牙经典连接的 Wear OS 手表。
+- 你想把文件从手机传到手表，而不是通过网盘、聊天软件或数据线中转。
 
-- 手表端 `watch:app`
-  - Wear OS 接收界面，展示等待、连接、接收进度、成功和失败状态。
-  - 通过 RFCOMM 服务端监听手机连接。
-  - 每个文件接收完成后写入 ACK，并自动回到监听状态。
-  - 使用 `MediaStore.Downloads` 保存到 `Download/WatchTransfer/`。
+## 准备工作
 
-- 共享协议 `shared:transfer-protocol`
-  - 纯 Kotlin/JVM 模块，无 Android 依赖。
-  - 统一维护 v2 wire format、常量、文件名清理、SHA-256 工具和 ACK 编解码。
+1. 在手机上安装 WatchTransfer 手机端 APK。
+2. 在手表上安装 WatchTransfer 手表端 APK。
+3. 在系统蓝牙设置里，让手机和手表完成配对。
+4. 打开两端应用，并按提示授予蓝牙权限。
 
-## 项目结构
+如果你没有 APK，请从仓库发布页下载，或向项目维护者获取手机端和手表端两个安装包。
+
+## 怎么发送文件
+
+1. 在手表上打开 WatchTransfer。
+2. 手表页面显示等待连接后，不要退出应用。
+3. 在手机上打开 WatchTransfer。
+4. 选择目标手表。
+5. 点击添加文件，选择一个或多个文件。
+6. 点击发送到手表。
+7. 传输完成后，手机会显示保存结果，手表会自动回到等待接收状态。
+
+你也可以在其他应用里使用系统分享，把文件分享到 WatchTransfer，再从手机端发送到手表。
+
+## 文件会保存到哪里
+
+手表端保存位置：
 
 ```text
-WatchTransfer/
-├── shared/transfer-protocol/   # 纯 Kotlin 传输协议库
-├── phone/app/                  # Android 手机发送端
-├── watch/app/                  # Wear OS 手表接收端
-├── phone/docs/                 # 手机端对接说明
-└── docs/                       # 项目分析和设计记录
+Download/WatchTransfer/
 ```
 
-根 Gradle 工程只包含：
+成功后，手机端会显示类似下面的保存路径：
 
-```kotlin
-include(":shared:transfer-protocol")
-include(":watch:app")
-include(":phone:app")
+```text
+Download/WatchTransfer/photo.jpg
 ```
 
-本地如存在 `手机模版/`，它只是 UI 刷新时用过的视觉参考工程，不参与根 Gradle 构建，也不作为主项目发布内容。
+## 当前支持
 
-## 技术栈
+- 手机到手表的单向传输。
+- 多文件选择和队列发送。
+- Android 系统分享入口。
+- 已配对蓝牙设备选择。
+- 传输进度显示。
+- 文件完整性校验。
+- 手表端接收完成后自动继续等待下一次发送。
 
-- Kotlin 2.0.21
-- Android Gradle Plugin 8.7.3
-- Jetpack Compose Material 3
-- AndroidX Lifecycle / ViewModel
-- Kotlin Coroutines
-- Bluetooth Classic RFCOMM
-- MediaStore Downloads
-- JUnit 4 + kotlinx-coroutines-test
-- Java 17 toolchain
+## 当前限制
 
-## 传输协议
+- 单个文件最大 30 MiB。
+- 不支持空文件。
+- 只支持手机发送到手表，不支持手表发送到手机。
+- 传输时两端应用都需要保持打开。
+- 暂不支持后台传输、断点续传和传输历史。
+- 如果手表离开接收页面、蓝牙断开或距离太远，本次传输可能失败，需要重新发送。
 
-协议版本：v2。
+## 常见问题
 
-每个文件使用一条独立 RFCOMM 连接：
+### 手机找不到手表
 
-1. 手机端连接手表端 RFCOMM 服务。
-2. 手机写入 `WTRF` header。
-3. 手机写入文件 body。
-4. 手表接收、保存并校验 SHA-256。
-5. 手表写入 `WTAK` ACK。
-6. 双方关闭连接，队列继续下一个文件。
+先确认手机和手表已经在系统蓝牙设置里配对。WatchTransfer 读取的是已配对设备列表，不是附近设备扫描列表。
 
-关键常量：
+### 提示需要蓝牙权限
 
-| 常量 | 值 |
-| --- | --- |
-| Service UUID | `8d520b7a-9f29-4ce1-8a8e-f3a1e2f7b921` |
-| Service name | `WatchTransferReceiver` |
-| Protocol version | `2` |
-| Max file size | `30 MiB` |
-| Max text field | `512 bytes` |
+在系统弹窗中允许蓝牙权限。如果之前拒绝过，可以到系统设置里的应用权限页面重新开启。
 
-ACK 成功时携带保存路径，例如 `Download/WatchTransfer/photo.jpg`；失败时携带可读错误原因。
+### 一直连接不上
 
-## 环境要求
+确认手表端 WatchTransfer 正在打开，并且页面处于等待接收状态。然后让手机和手表靠近一些，再重新发送。
 
-- Android Studio 或本地 Android SDK。
-- JDK 17。
-- 一台 Android 手机和一台支持蓝牙经典连接的 Wear OS 手表。
-- 两端设备需先在系统蓝牙设置中完成配对。
+### 文件发送失败
 
-如果从命令行构建，需要确保 `local.properties` 指向本机 Android SDK，例如：
+常见原因包括文件超过 30 MiB、蓝牙连接中断、手表端退出应用、手表存储空间不足。可以先发送一个小文本文件确认连接正常。
 
-```properties
-sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk
+### 文件传完后在哪里打开
+
+文件保存在手表下载目录下的 `WatchTransfer` 文件夹。不同手表系统的文件管理入口不完全一样，可以通过系统文件管理器或支持打开对应文件类型的应用查看。
+
+## 隐私说明
+
+WatchTransfer 使用本地蓝牙连接传输文件。文件不会被上传到服务器，也不会通过互联网转发。
+
+应用需要蓝牙权限来连接手机和手表；手机端通过系统文件选择器或分享入口读取你主动选择的文件。
+
+## 给维护者
+
+本仓库包含手机端、手表端和共享传输协议三个模块：
+
+```text
+phone/app
+watch/app
+shared/transfer-protocol
 ```
 
-`local.properties` 不会提交到仓库。
-
-## 构建
-
-Windows:
+常用本地构建命令：
 
 ```powershell
-.\gradlew.bat projects
 .\gradlew.bat :phone:app:assembleDebug
 .\gradlew.bat :watch:app:assembleDebug
 ```
 
-macOS / Linux:
-
-```bash
-./gradlew projects
-./gradlew :phone:app:assembleDebug
-./gradlew :watch:app:assembleDebug
-```
-
-Debug APK 输出位置：
-
-```text
-phone/app/build/outputs/apk/debug/app-debug.apk
-watch/app/build/outputs/apk/debug/app-debug.apk
-```
-
-## 测试
-
-运行 JVM / 本地单元测试：
-
-```powershell
-.\gradlew.bat :shared:transfer-protocol:test :phone:app:testDebugUnitTest :watch:app:testDebugUnitTest
-```
-
-运行插桩测试需要连接设备或模拟器：
-
-```powershell
-adb devices
-.\gradlew.bat :phone:app:connectedDebugAndroidTest :watch:app:connectedDebugAndroidTest
-```
-
-项目根路径当前包含中文字符，部分 Gradle 测试任务内置了 ASCII 临时路径同步逻辑，用于规避 Windows/JDK 对非 ASCII 测试 classpath 的兼容问题。
-
-## 使用流程
-
-1. 在手表上安装并打开 `watch:app`，授权蓝牙权限，保持在等待接收页面。
-2. 在手机上安装并打开 `phone:app`，授权蓝牙权限。
-3. 确认手机和手表已在系统蓝牙设置中配对。
-4. 在手机端选择目标手表。
-5. 点击添加文件，或从其他应用分享文件到 Watch Transfer。
-6. 点击发送到手表。
-7. 手表端保存成功后，手机端会显示 ACK 返回的保存路径。
-
-## 当前限制
-
-- 只支持手机到手表的单向传输。
-- 每个文件独立连接，暂不支持单连接批量协议。
-- 单文件最大 30 MiB。
-- 发送端当前会先把文件读入内存以计算 SHA-256。
-- 传输绑定前台 Activity 生命周期，尚未实现前台服务、后台持久传输或断点续传。
-- 协议 v2 无版本协商，不兼容旧协议。
-- UI 文案当前主要为中文硬编码，尚未资源化和本地化。
-
-## 文档
-
-- [项目分析报告](docs/project-analysis-report.md)
-- [手机端蓝牙对接文档](phone/docs/watch-receiver-bluetooth-integration.md)
-- [手机端 v2 设计记录](docs/superpowers/specs/2026-06-18-phone-sender-v2-design.md)
-- [手表接收端设计记录](docs/superpowers/specs/2026-06-15-watch-receiver-design.md)
+更详细的工程分析见 [docs/project-analysis-report.md](docs/project-analysis-report.md)。
 
 ## 许可证
 
