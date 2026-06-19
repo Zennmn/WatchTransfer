@@ -84,8 +84,6 @@ phone/app/build/outputs/apk/debug/app-debug.apk
 watch/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-工程分析见 [docs/project-analysis-report.md](docs/project-analysis-report.md)。
-
 ## License
 
 MIT

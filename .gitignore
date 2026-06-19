@@ -11,7 +11,7 @@ local.properties
 *.jks
 *.keystore
 captures/
-docs/superpowers/plans/
+docs/
 手机模版/
 **/.gradle/
 **/build/
