@@ -13,8 +13,8 @@
 
 到 [Releases](https://github.com/Zennmn/WatchTransfer/releases) 下载：
 
-- `WatchTransfer-phone-v0.1.0.apk`
-- `WatchTransfer-watch-v0.1.0.apk`
+- `WatchTransfer-phone-v0.1.1.apk`
+- `WatchTransfer-watch-v0.1.1.apk`
 
 手机端 APK 安装到手机，手表端 APK 安装到手表。
 
