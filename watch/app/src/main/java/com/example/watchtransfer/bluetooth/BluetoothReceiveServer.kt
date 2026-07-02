@@ -79,7 +79,7 @@ class BluetoothReceiveServer(
     private val sessionTimeoutMillis: Long = DEFAULT_SESSION_TIMEOUT_MILLIS
 ) {
     companion object {
-        private const val DEFAULT_PAUSE_AFTER_SESSION_MILLIS = 800L
+        private const val DEFAULT_PAUSE_AFTER_SESSION_MILLIS = 0L
         private const val DEFAULT_SESSION_TIMEOUT_MILLIS = 60_000L
     }
 

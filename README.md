@@ -1,8 +1,8 @@
-# WatchTransfer
+# 腕上传输
 
 手机向 Wear OS 手表发送文件的蓝牙工具。
 
-WatchTransfer 分为两个 APK：
+腕上传输分为两个 APK：
 
 - 手机端：安装在 Android 手机上，用来选择文件和发送。
 - 手表端：安装在 Wear OS 手表上，用来接收和保存。

@@ -115,7 +115,7 @@ fun PhoneSenderScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             LargeTopAppBar(
-                title = { Text("Watch Transfer") },
+                title = { Text("腕上传输") },
                 colors = TopAppBarDefaults.largeTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceVariant

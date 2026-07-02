@@ -68,36 +68,38 @@ fun asciiSafePathKey(value: String): String {
         .take(12)
 }
 
-val asciiDebugUnitTestClassesDir = providers.provider {
-    File(
-        System.getProperty("java.io.tmpdir"),
-        "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${asciiSafePathKey(project.path)}/debugUnitTest"
-    )
-}
-
-val syncDebugUnitTestClassesToAsciiPath by tasks.registering(Sync::class) {
-    dependsOn(
-        "compileDebugKotlin",
-        "compileDebugJavaWithJavac",
-        "compileDebugUnitTestKotlin",
-        "compileDebugUnitTestJavaWithJavac"
-    )
-    from(layout.buildDirectory.dir("tmp/kotlin-classes/debug"))
-    from(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes"))
-    from(layout.buildDirectory.dir("tmp/kotlin-classes/debugUnitTest"))
-    from(layout.buildDirectory.dir("intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"))
-    from(project(":shared:transfer-protocol").layout.buildDirectory.dir("libs"))
-    into(asciiDebugUnitTestClassesDir)
+fun configureAsciiUnitTestPath(variant: String) {
+    val cap = variant.replaceFirstChar { it.uppercase() }
+    val asciiUnitTestClassesDir = providers.provider {
+        File(
+            System.getProperty("java.io.tmpdir"),
+            "watchtransfer-gradle-test-classes/${asciiSafePathKey(rootDir.absolutePath)}/${asciiSafePathKey(project.path)}/${variant}UnitTest"
+        )
+    }
+    val syncClasses = tasks.register<Sync>("sync${cap}UnitTestClassesToAsciiPath") {
+        dependsOn(
+            "compile${cap}Kotlin",
+            "compile${cap}JavaWithJavac",
+            "compile${cap}UnitTestKotlin",
+            "compile${cap}UnitTestJavaWithJavac"
+        )
+        from(layout.buildDirectory.dir("tmp/kotlin-classes/$variant"))
+        from(layout.buildDirectory.dir("intermediates/javac/$variant/compile${cap}JavaWithJavac/classes"))
+        from(layout.buildDirectory.dir("tmp/kotlin-classes/${variant}UnitTest"))
+        from(layout.buildDirectory.dir("intermediates/javac/${variant}UnitTest/compile${cap}UnitTestJavaWithJavac/classes"))
+        from(project(":shared:transfer-protocol").layout.buildDirectory.dir("libs"))
+        into(asciiUnitTestClassesDir)
+    }
+    tasks.named("test${cap}UnitTest").configure {
+        dependsOn(syncClasses)
+        (this as org.gradle.api.tasks.testing.Test).apply {
+            testClassesDirs = files(asciiUnitTestClassesDir)
+            classpath = files(asciiUnitTestClassesDir) + files(asciiUnitTestClassesDir.map { File(it, "transfer-protocol.jar") }) + classpath
+        }
+    }
 }
 
 afterEvaluate {
-    tasks.named("testDebugUnitTest").configure {
-        dependsOn(syncDebugUnitTestClassesToAsciiPath)
-        (this as org.gradle.api.tasks.testing.Test).apply {
-            testClassesDirs = files(asciiDebugUnitTestClassesDir)
-            classpath = files(asciiDebugUnitTestClassesDir) + classpath
-            // Also add the protocol module JAR from the ASCII path
-            classpath = files(asciiDebugUnitTestClassesDir.map { File(it, "transfer-protocol.jar") }) + classpath
-        }
-    }
+    configureAsciiUnitTestPath("debug")
+    configureAsciiUnitTestPath("release")
 }

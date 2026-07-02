@@ -5,6 +5,7 @@ import com.example.watchtransfer.receiver.IncomingFileStore
 import com.example.watchtransfer.receiver.TransferResult
 import com.example.watchtransfer.receiver.TransferSessionReceiver
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.take
@@ -199,6 +200,28 @@ class BluetoothReceiveServerTest {
         assertEquals(BluetoothReceiveEvent.Waiting, events[3])
         assertEquals(BluetoothReceiveEvent.Connected("Pixel Two"), events[4])
         assertEquals(BluetoothReceiveEvent.Completed("Download/WatchTransfer/a.txt", 3L), events[5])
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun receiveContinuouslyDoesNotPauseBetweenDefaultSessions() = runTest {
+        val first = FakeConnectedSocket("Pixel One")
+        val second = FakeConnectedSocket("Pixel Two")
+        val factory = QueueRfcommSocketFactory(mutableListOf(first, second))
+        val sessionReceiver = object : SessionReceiver {
+            override fun receive(
+                input: java.io.InputStream,
+                store: IncomingFileStore,
+                onProgress: (com.example.watchtransfer.receiver.TransferProgress) -> Unit
+            ): TransferResult {
+                return TransferResult.Success("Download/WatchTransfer/a.txt", 3L)
+            }
+        }
+        val server = BluetoothReceiveServer(factory, sessionReceiver, FakeIncomingFileStore())
+
+        server.receiveContinuously().take(6).toList()
+
+        assertEquals(0L, testScheduler.currentTime)
     }
 
     private class QueueRfcommSocketFactory(
